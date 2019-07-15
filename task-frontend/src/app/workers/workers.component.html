@@ -1,0 +1,28 @@
+<h1>List of workers</h1>
+<div class="content">
+    <form (ngSubmit) = 'onAddWorker(workerForm)' (reset) = 'resetForm()' #workerForm = 'ngForm'>
+      <input type="hidden" name="_id" [(ngModel)] = "workerService.selectedWorker._id">
+      <input type = 'text' placeholder="Worker's name" name="name" [(ngModel)] = "workerService.selectedWorker.name" required>
+      <input type = 'text' placeholder="Worker's age" name="age" [(ngModel)] = "workerService.selectedWorker.age" required>
+      <div class="subres">
+        <button type="submit" [disabled] = '!workerForm.valid'>submit</button>
+        <button type="reset">reset</button>
+      </div>
+    </form>
+    <div class="line"></div>
+    <table>
+      <thead>
+        <th>Name</th>
+        <th>Age</th>
+        <th>Edit/Delete</th>
+      </thead>
+      <tr *ngFor = 'let worker of workerService.workers'>
+        <td>{{ worker.name }}</td>
+        <td>{{ worker.age }}</td>
+        <td>
+          <a (click)="onEdit(worker)">edit |</a>
+          <a (click)="onDelete(worker)"> delete</a>
+        </td>
+      </tr>
+    </table>
+</div>
