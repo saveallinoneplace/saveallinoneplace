@@ -31,7 +31,8 @@ func main() {
 	packetAll := gopacket.NewPacketSource(handle, handle.LinkType())
 
 	for packet := range packetAll.Packets() {
-		if isUDP(packet) {
+		UDPLayer := packet.Layer(layers.LayerTypeUDP)
+		if UDPLayer != nil {
 			sizeOfUDP += packet.Metadata().Length
 			packetCountUDP++
 		}
@@ -41,13 +42,4 @@ func main() {
 	fmt.Println("Amount of all packets:", packetCount)
 	fmt.Println("Amount of UDP:", packetCountUDP)
 	fmt.Println("Avarage size of UDP:", (sizeOfUDP / packetCountUDP))
-}
-
-func isUDP(packet gopacket.Packet) bool {
-	UDPLayer := packet.Layer(layers.LayerTypeUDP)
-	if UDPLayer != nil {
-		return true
-	} else {
-		return false
-	}
 }
