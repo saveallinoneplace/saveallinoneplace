@@ -1,0 +1,121 @@
+﻿--1 задание
+CREATE TABLE IF NOT EXISTS dolzh (
+id serial primary key,
+name varchar not null);
+
+CREATE TABLE IF NOT EXISTS worker (
+id serial primary key,
+name varchar not null,
+surname varchar not null,
+patronymic varchar,
+birthday date not null);
+
+CREATE TABLE podraz (
+    id int not null primary key, 
+    parent_id int references podraz(id),  
+    name varchar(100)
+);
+
+CREATE TABLE shtat (
+id int not null primary key,
+podraz_id integer REFERENCES podraz (id),
+dolzh_id integer REFERENCES dolzh (id),
+worker_id integer REFERENCES worker (id) UNIQUE)
+
+INSERT INTO podraz 
+(id, parent_id, name) 
+VALUES 
+(1, null, 'Руководство'),
+(2, 1, 'Производство'),
+(3, 1, 'Финансы'),
+(4, 1, 'Технологический отдел'),
+(5, 4, 'Конструкторы'),
+(6, 2, 'Управление производством'),
+(7, 6, 'Мастера'),
+(8, 3, 'Бухгалтерия');
+
+
+--2 задание
+WITH RECURSIVE r AS (
+   SELECT id, parent_id, name
+   FROM podraz
+
+   UNION ALL
+
+   SELECT podraz.id, podraz.parent_id, podraz.name
+   FROM r
+      JOIN podraz
+          ON r.parent_id = podraz.id
+)
+
+SELECT   id, name, COUNT(*)-1 as childs
+FROM     r
+GROUP BY id, name
+ORDER BY id;
+
+
+--3 задание
+CREATE TRIGGER infinity_cycle
+  BEFORE UPDATE OR INSERT OR DELETE
+  ON podraz
+  FOR EACH ROW
+  EXECUTE PROCEDURE log_infinity_cycle();
+
+CREATE TABLE logs
+(
+  text text,
+  added timestamp without time zone
+)
+
+CREATE OR REPLACE FUNCTION log_infinity_cycle() RETURNS TRIGGER AS
+$$
+DECLARE
+    mstr varchar(30);
+BEGIN
+    IF EXISTS (select 1 FROM podraz WHERE id = new.parent_id ) AND EXISTS (select 1 FROM podraz WHERE parent_id = new.id ) THEN
+		mstr := 'infinity cycle created';
+		INSERT INTO logs(text,added) values (mstr,NOW());
+        RETURN NULL;
+    ELSE
+	RETURN NEW;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+UPDATE podraz SET parent_id = 10 WHERE id = 9
+
+
+--4 задание
+SELECT *
+    FROM   worker
+    WHERE  Extract(month from birthday) >= Extract(month from Now())
+    AND    Extract(month from birthday) <= Extract(month from Now() + Interval '3 day')
+    AND    Extract(day from birthday)   >= Extract(day from Now())
+    AND    Extract(day from birthday)   <= Extract(day from Now() + Interval '3 day');
+
+
+--5 задание
+CREATE VIEW worker_view AS
+  SELECT
+	worker.name || ' ' || worker.surname AS name,
+	dolzh.name as dolzh
+	
+   FROM shtat p
+	INNER JOIN worker  ON p.worker_id = worker.id
+	INNER JOIN dolzh   ON p.dolzh_id = dolzh.id
+
+	
+CREATE RECURSIVE VIEW worker_view (name, dolzh, path)AS
+		SELECT podraz.id, podraz.parent_id,
+			worker.name || ' ' || worker.surname AS name,
+			dolzh.name as dolzh
+		FROM   shtat
+			INNER JOIN worker  ON shtat.worker_id = worker.id
+			INNER JOIN dolzh   ON shtat.dolzh_id = dolzh.id
+			INNER JOIN podraz  ON shtat.podraz_id = podraz.id
+
+		UNION ALL
+		SELECT  shtat.id, vw.array[podraz.id] AS path
+		FROM   shtat
+			INNER JOIN podraz  ON shtat.podraz_id = podraz.id
+			INNER JOIN worker_view wv ON podraz.parent_id = wv.id
